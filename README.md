@@ -44,10 +44,35 @@ npm install
 npm run dev
 ```
 
-The demo runs in **mock mode** by default — no API key needed, no
-network calls. To run against the live Anthropic API, see
-`src/demo/api-client.ts` (flip `USE_MOCKS = false`) and provide your
-own key via the `ANTHROPIC_API_KEY` environment variable.
+The frontend runs at `http://localhost:4321`. The `/api/generate` endpoint
+is served by Cloudflare Pages in production — Astro's dev server does not
+run Pages Functions, so `npm run dev` alone won't be able to hit the live
+Anthropic pipeline.
+
+### Two ways to exercise the pipeline locally
+
+**Offline mocks** — flip `USE_MOCKS = true` in `src/demo/api-client.ts`. The
+demo will short-circuit `/api/generate` and return a canned response. Good
+for UI iteration without an API key.
+
+**Live API via wrangler** — to exercise the real two-stage pipeline locally:
+
+```bash
+cp .dev.vars.example .dev.vars
+# edit .dev.vars and paste your ANTHROPIC_API_KEY
+npm run build
+npx wrangler pages dev dist --compatibility-date=2026-05-22
+```
+
+`wrangler pages dev` serves both the built static site and the
+`functions/api/generate.ts` endpoint, picking up secrets from `.dev.vars`.
+
+### Production secrets
+
+In the Cloudflare Pages dashboard for this project:
+**Settings → Environment variables → Production →** add
+`ANTHROPIC_API_KEY` (encrypted). Set a monthly budget cap on the Anthropic
+console as a backstop.
 
 ## Project layout
 

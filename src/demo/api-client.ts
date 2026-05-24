@@ -12,7 +12,9 @@ interface GenerateResponse {
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-export const USE_MOCKS = true;
+// Flip to `true` for offline development without an Anthropic key. Production
+// + CF Pages deploys hit /api/generate (the real two-stage pipeline).
+export const USE_MOCKS = false;
 
 export async function* runPipeline(
   prompt: string,
