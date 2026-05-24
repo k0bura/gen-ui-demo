@@ -1,0 +1,31 @@
+{
+  "name": "gen-ui-demo",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Two-stage Claude tool-use pipeline that composes UI from a small web-component library, without generating any code.",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/svelte": "^8.1.1",
+    "@tailwindcss/vite": "^4.3.0",
+    "astro": "^6.3.7",
+    "chart.js": "^4.5.1",
+    "lit": "^3.3.3",
+    "svelte": "^5.55.9",
+    "tailwindcss": "^4.3.0"
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^0.98.0",
+    "@astrojs/check": "^0.9.9",
+    "@cloudflare/workers-types": "^4.20260522.1",
+    "@fontsource-variable/inter": "^5.2.5",
+    "@fontsource-variable/jetbrains-mono": "^5.2.5",
+    "typescript": "^6.0.3"
+  }
+}

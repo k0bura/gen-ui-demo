@@ -1,0 +1,291 @@
+---
+import App from "../layouts/App.astro";
+import GenUI from "../components/GenUI.svelte";
+---
+
+<App title="Gen UI Demo">
+  <header class="app-header">
+    <div class="app-header-inner">
+      <a href="/" class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-name">Gen UI Demo</span>
+      </a>
+      <nav class="app-nav" aria-label="External">
+        <a
+          href="https://github.com/k0bura/gen-ui-demo"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Source
+          <span aria-hidden="true">&nearr;</span>
+        </a>
+        <a
+          href="https://jeffmills.dev/projects/gen-ui-demo"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          About
+          <span aria-hidden="true">&nearr;</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="app-main" id="main">
+    <section class="hero">
+      <h1 class="hero-title">Generative UI without generating code</h1>
+      <p class="hero-lede">
+        Two Claude tool-use calls in series. The first selects components
+        from a small web-component library and fills them with content;
+        the second arranges them into a layout. A renderer materializes
+        the result deterministically. The model never writes code.
+      </p>
+    </section>
+
+    <section class="demo">
+      <GenUI client:load />
+    </section>
+
+    <section class="explainer">
+      <h2 class="explainer-title">How it works</h2>
+      <ol class="explainer-list">
+        <li>
+          <span class="explainer-step">1</span>
+          <div>
+            <h3>Component selection</h3>
+            <p>
+              The first model call receives a tool schema describing the
+              available components and their props. It returns structured
+              <code>tool_use</code> blocks that name components and fill
+              them with content. No JSX, no HTML — typed JSON.
+            </p>
+          </div>
+        </li>
+        <li>
+          <span class="explainer-step">2</span>
+          <div>
+            <h3>Layout composition</h3>
+            <p>
+              A second model call receives the chosen components and a
+              layout-tool schema. It returns a nested layout object that
+              groups components into rows, columns, and stacks. Constrained
+              to a small grammar; no free-form layout code.
+            </p>
+          </div>
+        </li>
+        <li>
+          <span class="explainer-step">3</span>
+          <div>
+            <h3>Deterministic render</h3>
+            <p>
+              The application code walks the layout tree, instantiates each
+              web component, and renders. Standards-based custom elements
+              mean the same components work in Vue, Angular, AEM, or
+              vanilla HTML.
+            </p>
+          </div>
+        </li>
+      </ol>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <div class="app-footer-inner">
+      <span class="muted">
+        Built by <a href="https://jeffmills.dev">Jeff Mills</a> &middot;
+        Open source on
+        <a
+          href="https://github.com/k0bura/gen-ui-demo"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          GitHub
+        </a>
+      </span>
+    </div>
+  </footer>
+
+  <script>
+    // Register custom elements on the client.
+    import "../lib/ds/index.ts";
+  </script>
+</App>
+
+<style>
+  /* Layout */
+  .app-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-surface-2);
+    backdrop-filter: saturate(180%) blur(8px);
+  }
+
+  .app-header-inner {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: var(--space-4) var(--space-6);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-6);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    color: var(--color-fg);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .brand:hover {
+    text-decoration: none;
+    color: var(--color-fg);
+  }
+
+  .brand-mark {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, var(--color-accent), #6366f1);
+    box-shadow: 0 0 0 1px var(--color-surface-2);
+  }
+
+  .brand-name {
+    font-size: 0.95rem;
+    letter-spacing: -0.01em;
+  }
+
+  .app-nav {
+    display: flex;
+    gap: var(--space-5);
+    font-size: 0.875rem;
+  }
+
+  .app-nav a {
+    color: var(--color-fg-muted);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2em;
+  }
+
+  .app-nav a:hover {
+    color: var(--color-fg);
+    text-decoration: none;
+  }
+
+  .app-main {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: var(--space-12) var(--space-6) var(--space-12);
+  }
+
+  /* Hero */
+  .hero {
+    margin-bottom: var(--space-10);
+    max-width: 48rem;
+  }
+
+  .hero-title {
+    font-size: clamp(1.75rem, 2.5vw + 1rem, 2.5rem);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--space-4);
+  }
+
+  .hero-lede {
+    font-size: 1.05rem;
+    color: var(--color-fg-muted);
+    margin: 0;
+  }
+
+  /* Demo container */
+  .demo {
+    background: var(--color-surface);
+    border: 1px solid var(--color-surface-2);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    margin-bottom: var(--space-12);
+    box-shadow: var(--shadow-md);
+  }
+
+  /* Explainer */
+  .explainer-title {
+    font-size: 1.5rem;
+    margin-bottom: var(--space-6);
+  }
+
+  .explainer-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: var(--space-6);
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 768px) {
+    .explainer-list {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .explainer-list > li {
+    display: flex;
+    gap: var(--space-4);
+    align-items: flex-start;
+    background: var(--color-surface);
+    border: 1px solid var(--color-surface-2);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+  }
+
+  .explainer-step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    flex-shrink: 0;
+    border-radius: var(--radius-md);
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+
+  .explainer-list h3 {
+    font-size: 1rem;
+    margin-bottom: var(--space-2);
+  }
+
+  .explainer-list p {
+    color: var(--color-fg-muted);
+    font-size: 0.9rem;
+    margin: 0;
+  }
+
+  /* Footer */
+  .app-footer {
+    border-top: 1px solid var(--color-surface-2);
+    margin-top: var(--space-12);
+  }
+
+  .app-footer-inner {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: var(--space-6);
+    font-size: 0.875rem;
+    color: var(--color-fg-muted);
+  }
+
+  .muted {
+    color: var(--color-fg-muted);
+  }
+</style>
