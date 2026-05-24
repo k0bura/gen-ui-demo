@@ -48,18 +48,26 @@ interface AnthropicResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Stage 1 tool list, with prompt caching on the last tool so the entire
-// (large) tool array is cached after the first call.
+// Prompt caching.
+//
+// cache_control on the last element of a block caches everything from the
+// start of the request up to and including that element. The variable
+// portion (the user prompt) stays outside the cache. Anthropic bills cached
+// content at ~10% of the per-call rate on subsequent requests within the
+// cache TTL, so for both stages we cache everything except the user message.
 // ---------------------------------------------------------------------------
 
-const cachedComponentTools = componentTools.map((t, i) => {
-  // cache_control on the final tool caches everything up to and including
-  // that tool; this saves ~95% of the per-call cost after the first request.
-  if (i === componentTools.length - 1) {
-    return { ...t, cache_control: { type: "ephemeral" } };
-  }
-  return t;
-});
+const EPHEMERAL = { cache_control: { type: "ephemeral" } as const };
+
+// Stage 1: cache the tools array. The system prompt is cached separately
+// (see selectComponents). componentTools is the big block — ~40 tools, each
+// with full attribute schemas — so this is the high-leverage cache.
+const cachedComponentTools = componentTools.map((t, i) =>
+  i === componentTools.length - 1 ? { ...t, ...EPHEMERAL } : t,
+);
+
+// Stage 2: only one tool, but still worth caching.
+const cachedLayoutTool = { ...layoutTool, ...EPHEMERAL };
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -182,8 +190,16 @@ async function composeLayout(
   const response = await callAnthropic(apiKey, {
     model: STAGE_2_MODEL,
     max_tokens: 4096,
-    system: LAYOUT_DESIGNER_PROMPT,
-    tools: [layoutTool],
+    // Cache the (long) system prompt + the layout tool spec; only the
+    // user message varies per request.
+    system: [
+      {
+        type: "text",
+        text: LAYOUT_DESIGNER_PROMPT,
+        ...EPHEMERAL,
+      },
+    ],
+    tools: [cachedLayoutTool],
     tool_choice: { type: "tool", name: "compose_layout" },
     messages: [{ role: "user", content: userMsg }],
   });
