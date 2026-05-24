@@ -126,3 +126,84 @@ code {
   background: var(--color-accent);
   color: var(--color-accent-fg);
 }
+
+/* ---------------------------------------------------------------------- */
+/* Shoelace theme overrides: re-skin the dark theme to our slate+blue.    */
+/* ---------------------------------------------------------------------- */
+
+:root,
+:host,
+.sl-theme-dark {
+  /* Surfaces */
+  --sl-color-neutral-0:    #020617;
+  --sl-color-neutral-50:   #0f172a;
+  --sl-color-neutral-100:  #1e293b;
+  --sl-color-neutral-200:  #334155;
+  --sl-color-neutral-300:  #475569;
+  --sl-color-neutral-400:  #64748b;
+  --sl-color-neutral-500:  #94a3b8;
+  --sl-color-neutral-600:  #cbd5e1;
+  --sl-color-neutral-700:  #e2e8f0;
+  --sl-color-neutral-800:  #f1f5f9;
+  --sl-color-neutral-900:  #f8fafc;
+  --sl-color-neutral-950:  #ffffff;
+
+  /* Primary -> our blue accent (Tailwind blue scale) */
+  --sl-color-primary-50:   #172554;
+  --sl-color-primary-100:  #1e3a8a;
+  --sl-color-primary-200:  #1e40af;
+  --sl-color-primary-300:  #1d4ed8;
+  --sl-color-primary-400:  #2563eb;
+  --sl-color-primary-500:  #3b82f6;
+  --sl-color-primary-600:  #60a5fa;
+  --sl-color-primary-700:  #93c5fd;
+  --sl-color-primary-800:  #bfdbfe;
+  --sl-color-primary-900:  #dbeafe;
+  --sl-color-primary-950:  #eff6ff;
+
+  /* Page-level overrides */
+  --sl-color-neutral-1000: var(--color-fg);
+  --sl-panel-background-color: var(--color-surface);
+  --sl-panel-border-color: var(--color-surface-2);
+
+  /* Typography */
+  --sl-font-sans: var(--font-sans);
+  --sl-font-mono: var(--font-mono);
+  --sl-font-size-medium: 0.95rem;
+
+  /* Spacing aligns with Tailwind */
+  --sl-border-radius-small: 0.25rem;
+  --sl-border-radius-medium: 0.5rem;
+  --sl-border-radius-large: 0.75rem;
+  --sl-border-radius-x-large: 1rem;
+}
+
+/* Shoelace components inside the demo should not bleed past container */
+sl-card {
+  --padding: var(--space-5);
+  width: 100%;
+}
+
+sl-card::part(base) {
+  background: var(--color-surface);
+  border-color: var(--color-surface-2);
+}
+
+sl-alert::part(base) {
+  background: var(--color-surface);
+  border-color: var(--color-surface-2);
+}
+
+sl-details::part(base) {
+  background: var(--color-surface);
+  border-color: var(--color-surface-2);
+}
+
+sl-divider {
+  --color: var(--color-surface-2);
+  --spacing: var(--space-2);
+}
+
+sl-tab-group::part(tabs) {
+  border-bottom-color: var(--color-surface-2);
+}

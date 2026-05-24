@@ -105,10 +105,11 @@ import GenUI from "../components/GenUI.svelte";
     </div>
   </footer>
 
-  <script>
-    // Register custom elements on the client.
-    import "../lib/ds/index.ts";
-  </script>
+  <!--
+    Shoelace components register themselves via the autoloader imported in
+    src/layouts/App.astro; no per-tag imports needed.
+  -->
+
 </App>
 
 <style>

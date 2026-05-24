@@ -1,68 +1,141 @@
-import type { ComponentChoice, LayoutNode } from "./types.ts";
+import type { ComponentInstance, LayoutNode } from "./types";
 
-export const MOCK_COMPONENTS: ComponentChoice[] = [
+// One Shoelace component per ComponentInstance. The renderer turns each
+// into <sl-tag attribute="..."> with optional content + slot children.
+
+export const MOCK_COMPONENTS: ComponentInstance[] = [
   {
-    name: "allocation_chart",
-    component: "chart",
-    payload: {
-      kind: "doughnut",
-      label: "Asset allocation",
-      data: [
-        { label: "US Stocks", value: 60 },
-        { label: "Intl Stocks", value: 20 },
-        { label: "Bonds", value: 15 },
-        { label: "Cash", value: 5 },
-      ],
+    id: 0,
+    tagName: "sl-card",
+    attributes: {},
+    slots: {
+      header: "Asset allocation",
     },
+    content:
+      "A 60/20/15/5 mix balances long-horizon growth with enough fixed income to soften drawdowns.",
   },
   {
-    name: "allocation_table",
-    component: "table",
-    payload: {
-      headers: ["Asset Class", "Target", "Rationale"],
-      rows: [
-        ["US Stocks", "60%", "Long-horizon growth engine"],
-        ["Intl Stocks", "20%", "Geographic diversification"],
-        ["Bonds", "15%", "Volatility dampening"],
-        ["Cash", "5%", "Near-term liquidity"],
-      ],
-    },
+    id: 1,
+    tagName: "sl-progress-ring",
+    attributes: { value: 60, "track-width": 8 },
+    content: "60%",
   },
   {
-    name: "summary_text",
-    component: "text",
-    payload: {
-      body: "A 60/20/15/5 mix balances long-horizon growth with enough fixed income to soften drawdowns. Rebalance once a year and stay diversified across sectors and geographies.",
-    },
+    id: 2,
+    tagName: "sl-progress-ring",
+    attributes: { value: 20, "track-width": 8 },
+    content: "20%",
   },
   {
-    name: "tradeoffs_list",
-    component: "list",
-    payload: {
-      variant: "unordered",
-      items: [
-        "Higher equity weighting means deeper drawdowns in bear markets.",
-        "International exposure adds currency risk on top of equity risk.",
-        "A 15% bond allocation is light by traditional rules of thumb.",
-        "Keep cash high enough to avoid selling stocks in a downturn.",
-      ],
-    },
+    id: 3,
+    tagName: "sl-progress-ring",
+    attributes: { value: 15, "track-width": 8 },
+    content: "15%",
+  },
+  {
+    id: 4,
+    tagName: "sl-progress-ring",
+    attributes: { value: 5, "track-width": 8 },
+    content: "5%",
+  },
+  {
+    id: 5,
+    tagName: "sl-badge",
+    attributes: { variant: "primary", pill: true },
+    content: "US Stocks",
+  },
+  {
+    id: 6,
+    tagName: "sl-badge",
+    attributes: { variant: "neutral", pill: true },
+    content: "Intl Stocks",
+  },
+  {
+    id: 7,
+    tagName: "sl-badge",
+    attributes: { variant: "warning", pill: true },
+    content: "Bonds",
+  },
+  {
+    id: 8,
+    tagName: "sl-badge",
+    attributes: { variant: "success", pill: true },
+    content: "Cash",
+  },
+  {
+    id: 9,
+    tagName: "sl-alert",
+    attributes: { variant: "primary", open: true },
+    content:
+      "Rebalance once a year and stay diversified across sectors and geographies. Keep cash high enough to avoid selling stocks in a downturn.",
+  },
+  {
+    id: 10,
+    tagName: "sl-details",
+    attributes: { summary: "Why this mix?" },
+    content:
+      "Higher equity weighting means deeper drawdowns in bear markets but stronger compounding over a 20+ year horizon. International exposure adds currency risk on top of equity risk. A 15% bond allocation is light by traditional rules of thumb and reflects a long-horizon investor's tolerance for volatility.",
   },
 ];
 
 export const MOCK_LAYOUT: LayoutNode = {
-  kind: "container",
-  direction: "column",
+  kind: "section",
+  heading: "Q3 portfolio snapshot",
+  description: "A balanced 60/20/15/5 allocation, presented for review.",
   children: [
+    { kind: "ref", ref: 0 },
     {
-      kind: "container",
-      direction: "row",
+      kind: "stack",
+      gap: "lg",
       children: [
-        { kind: "component", name: "allocation_chart" },
-        { kind: "component", name: "allocation_table" },
+        {
+          kind: "row",
+          gap: "lg",
+          justify: "around",
+          align: "center",
+          children: [
+            {
+              kind: "stack",
+              align: "center",
+              gap: "sm",
+              children: [
+                { kind: "ref", ref: 1 },
+                { kind: "ref", ref: 5 },
+              ],
+            },
+            {
+              kind: "stack",
+              align: "center",
+              gap: "sm",
+              children: [
+                { kind: "ref", ref: 2 },
+                { kind: "ref", ref: 6 },
+              ],
+            },
+            {
+              kind: "stack",
+              align: "center",
+              gap: "sm",
+              children: [
+                { kind: "ref", ref: 3 },
+                { kind: "ref", ref: 7 },
+              ],
+            },
+            {
+              kind: "stack",
+              align: "center",
+              gap: "sm",
+              children: [
+                { kind: "ref", ref: 4 },
+                { kind: "ref", ref: 8 },
+              ],
+            },
+          ],
+        },
+        { kind: "divider" },
+        { kind: "ref", ref: 9 },
+        { kind: "ref", ref: 10 },
       ],
     },
-    { kind: "component", name: "summary_text" },
-    { kind: "component", name: "tradeoffs_list" },
   ],
 };

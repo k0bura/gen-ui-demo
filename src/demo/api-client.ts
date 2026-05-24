@@ -1,8 +1,12 @@
-import type { PipelineEvent, ComponentChoice, LayoutNode } from "./types.ts";
-import { MOCK_COMPONENTS, MOCK_LAYOUT } from "./mocks.ts";
+import type {
+  PipelineEvent,
+  ComponentInstance,
+  LayoutNode,
+} from "./types";
+import { MOCK_COMPONENTS, MOCK_LAYOUT } from "./mocks";
 
 interface GenerateResponse {
-  components: ComponentChoice[];
+  components: ComponentInstance[];
   layout: LayoutNode;
 }
 
@@ -10,7 +14,9 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 export const USE_MOCKS = true;
 
-export async function* runPipeline(prompt: string): AsyncGenerator<PipelineEvent> {
+export async function* runPipeline(
+  prompt: string,
+): AsyncGenerator<PipelineEvent> {
   if (USE_MOCKS) {
     yield* runMockPipeline(prompt);
     return;
@@ -18,17 +24,21 @@ export async function* runPipeline(prompt: string): AsyncGenerator<PipelineEvent
   yield* runRealPipeline(prompt);
 }
 
-async function* runMockPipeline(_prompt: string): AsyncGenerator<PipelineEvent> {
-  yield { type: "stage1_start" };
+async function* runMockPipeline(
+  _prompt: string,
+): AsyncGenerator<PipelineEvent> {
+  yield { type: "stage1-start" };
   await sleep(900);
-  yield { type: "stage1_complete", components: MOCK_COMPONENTS };
-  yield { type: "stage2_start" };
+  yield { type: "stage1-result", components: MOCK_COMPONENTS };
+  yield { type: "stage2-start" };
   await sleep(700);
-  yield { type: "stage2_complete", layout: MOCK_LAYOUT };
+  yield { type: "stage2-result", layout: MOCK_LAYOUT };
 }
 
-async function* runRealPipeline(prompt: string): AsyncGenerator<PipelineEvent> {
-  yield { type: "stage1_start" };
+async function* runRealPipeline(
+  prompt: string,
+): AsyncGenerator<PipelineEvent> {
+  yield { type: "stage1-start" };
   try {
     const res = await fetch("/api/generate", {
       method: "POST",
@@ -40,10 +50,13 @@ async function* runRealPipeline(prompt: string): AsyncGenerator<PipelineEvent> {
       return;
     }
     const data = (await res.json()) as GenerateResponse;
-    yield { type: "stage1_complete", components: data.components };
-    yield { type: "stage2_start" };
-    yield { type: "stage2_complete", layout: data.layout };
+    yield { type: "stage1-result", components: data.components };
+    yield { type: "stage2-start" };
+    yield { type: "stage2-result", layout: data.layout };
   } catch (e) {
-    yield { type: "error", message: e instanceof Error ? e.message : String(e) };
+    yield {
+      type: "error",
+      message: e instanceof Error ? e.message : String(e),
+    };
   }
 }

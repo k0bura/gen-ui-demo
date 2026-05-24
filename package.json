@@ -5,14 +5,17 @@
   "private": true,
   "description": "Two-stage Claude tool-use pipeline that composes UI from a small web-component library, without generating any code.",
   "scripts": {
-    "dev": "astro dev",
-    "build": "astro build",
+    "dev": "npm run shoelace:assets && astro dev",
+    "build": "npm run shoelace:assets && astro build",
     "preview": "astro preview",
     "check": "astro check",
-    "astro": "astro"
+    "astro": "astro",
+    "shoelace:assets": "rm -rf public/shoelace && mkdir -p public/shoelace && cp -r node_modules/@shoelace-style/shoelace/dist/assets public/shoelace/",
+    "postinstall": "npm run shoelace:assets"
   },
   "dependencies": {
     "@astrojs/svelte": "^8.1.1",
+    "@shoelace-style/shoelace": "^2.20.1",
     "@tailwindcss/vite": "^4.3.0",
     "astro": "^6.3.7",
     "chart.js": "^4.5.1",

@@ -1,144 +1,151 @@
-export const componentTools = [
-  {
-    name: "text",
-    description: "Render a short paragraph. Use for explanations, summaries, or single-sentence answers. NEVER use for ordered or numbered content.",
-    input_schema: {
-      type: "object",
-      properties: {
-        name: { type: "string", description: "Unique identifier for this component, used to reference it in the layout step." },
-        body: { type: "string" },
-      },
-      required: ["name", "body"],
-    },
-  },
-  {
-    name: "list",
-    description: "Render an ordered or unordered list. Use for steps, bullets, or any sequence.",
-    input_schema: {
-      type: "object",
-      properties: {
-        name: { type: "string", description: "Unique identifier for this component." },
-        variant: { type: "string", enum: ["ordered", "unordered"] },
-        items: { type: "array", items: { type: "string" } },
-      },
-      required: ["name", "variant", "items"],
-    },
-  },
-  {
-    name: "table",
-    description: "Render a table. Use for tabular or comparative data. All cells must be strings.",
-    input_schema: {
-      type: "object",
-      properties: {
-        name: { type: "string", description: "Unique identifier for this component." },
-        headers: { type: "array", items: { type: "string" } },
-        rows: {
-          type: "array",
-          items: { type: "array", items: { type: "string" } },
-        },
-      },
-      required: ["name", "headers", "rows"],
-    },
-  },
-  {
-    name: "accordion",
-    description: "Render a collapsible accordion. Use when there are three or more discrete topics that the user may want to expand independently.",
-    input_schema: {
-      type: "object",
-      properties: {
-        name: { type: "string", description: "Unique identifier for this component." },
-        items: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              title: { type: "string" },
-              content: { type: "string" },
-            },
-            required: ["title", "content"],
-          },
-        },
-      },
-      required: ["name", "items"],
-    },
-  },
-  {
-    name: "chart",
-    description: "Render a chart. Pick the most appropriate kind based on the data.",
-    input_schema: {
-      type: "object",
-      properties: {
-        name: { type: "string", description: "Unique identifier for this component." },
-        kind: { type: "string", enum: ["bar", "line", "doughnut", "pie"] },
-        label: { type: "string", description: "Caption / title for the chart." },
-        data: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              label: { type: "string" },
-              value: { type: "number", minimum: 0 },
-            },
-            required: ["label", "value"],
-          },
-        },
-      },
-      required: ["name", "kind", "label", "data"],
-    },
-  },
-] as const;
+// Stage 1: component-selection tools (manifest-driven, one per Shoelace tag)
+// Stage 2: a single layout-composition tool with a recursive layout schema
+//
+// The Stage 1 tools come from the manifest parser. The Stage 2 tool is
+// hand-defined here because the layout grammar is our own DSL, not
+// something the design system manifest expresses.
 
-export const layoutTool = {
+import { componentTools as manifestTools } from "./manifest";
+import type { AnthropicTool } from "./types";
+
+export const componentTools = manifestTools;
+
+// ---------------------------------------------------------------------------
+// Stage 2 — layout composition
+// ---------------------------------------------------------------------------
+
+const GAP_VALUES = ["xs", "sm", "md", "lg", "xl"] as const;
+
+// JSON Schema for a recursive layout-node union. Anthropic doesn't reliably
+// resolve $ref, so we describe one level deep and document recursion in the
+// tool description; the model is good at this once it sees an example.
+const nodeSchema = {
+  type: "object",
+  description:
+    "A layout node. One of: ref, grid, stack, row, section, tabs, sidebar, divider. See the tool description for the full grammar.",
+  properties: {
+    kind: {
+      type: "string",
+      enum: [
+        "ref",
+        "grid",
+        "stack",
+        "row",
+        "section",
+        "tabs",
+        "sidebar",
+        "divider",
+      ],
+    },
+    // ref-specific
+    ref: {
+      type: "number",
+      description: "(ref) The id of a component from Stage 1.",
+    },
+    span: {
+      type: "number",
+      description: "(ref) Optional column-span when nested inside a grid.",
+    },
+    // grid / stack / row / section / sidebar shared
+    columns: {
+      type: "number",
+      description: "(grid) Number of columns.",
+    },
+    gap: {
+      type: "string",
+      enum: [...GAP_VALUES],
+      description: "(grid / stack / row) Named gap between children.",
+    },
+    wrap: {
+      type: "boolean",
+      description: "(row) Whether children should wrap on overflow.",
+    },
+    align: {
+      type: "string",
+      enum: ["start", "center", "end", "stretch"],
+      description: "(stack / row) Cross-axis alignment.",
+    },
+    justify: {
+      type: "string",
+      enum: ["start", "center", "end", "between", "around"],
+      description: "(row) Main-axis justification.",
+    },
+    heading: {
+      type: "string",
+      description: "(section) Optional section heading.",
+    },
+    description: {
+      type: "string",
+      description: "(section) Optional section sub-heading.",
+    },
+    tabs: {
+      type: "array",
+      description:
+        "(tabs) Array of { label, children } where children is a list of nodes for that tab's content.",
+      items: {
+        type: "object",
+        properties: {
+          label: { type: "string" },
+          children: { type: "array" },
+        },
+        required: ["label", "children"],
+      },
+    },
+    side: {
+      type: "string",
+      enum: ["left", "right"],
+      description: "(sidebar) Which side the aside is on.",
+    },
+    sideWidth: {
+      type: "string",
+      enum: ["narrow", "medium", "wide"],
+      description: "(sidebar) Aside column width.",
+    },
+    main: {
+      type: "array",
+      description: "(sidebar) Main column children.",
+    },
+    aside: {
+      type: "array",
+      description: "(sidebar) Side column children.",
+    },
+    children: {
+      type: "array",
+      description:
+        "(grid / stack / row / section) Child nodes. Use refs for component leaves; nest other layout nodes here for sub-layouts.",
+    },
+  },
+  required: ["kind"],
+};
+
+export const layoutTool: AnthropicTool = {
   name: "compose_layout",
-  description: "Compose the selected components into a visual layout of rows and columns.",
+  description: `Arrange the components from Stage 1 into a layout.
+
+The layout is a tree of nodes. Available node kinds:
+
+  - ref       Leaf node pointing at a Stage 1 component by id.
+              { kind: "ref", ref: 0, span?: 2 }
+  - grid      Fixed-column grid. { kind: "grid", columns: 3, gap: "md", children: [...] }
+  - stack     Vertical stack. { kind: "stack", gap: "md", children: [...] }
+  - row       Horizontal row, wraps by default. { kind: "row", gap: "md", children: [...] }
+  - section   Semantic group with optional heading + description.
+              { kind: "section", heading: "Performance", children: [...] }
+  - tabs      Tabbed group. { kind: "tabs", tabs: [{ label: "Equity", children: [...] }, ...] }
+  - sidebar   Two-column main + aside. { kind: "sidebar", side: "right", main: [...], aside: [...] }
+  - divider   Visual horizontal divider. { kind: "divider" }
+
+Rules:
+  - Every Stage 1 component must appear in the layout exactly once (as a ref leaf).
+  - The root node is usually a section, stack, or grid.
+  - Use 'tabs' to break dense content into discrete views.
+  - Use 'sidebar' for primary-content + supporting-content layouts.
+  - Use named gaps (xs/sm/md/lg/xl), not pixel values.`,
   input_schema: {
     type: "object",
     properties: {
-      layout: {
-        type: "object",
-        description: "Root layout node.",
-        properties: {
-          kind: { type: "string", enum: ["container"] },
-          direction: { type: "string", enum: ["row", "column"] },
-          children: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                kind: { type: "string", enum: ["container", "component"] },
-                direction: { type: "string", enum: ["row", "column"] },
-                name: { type: "string", description: "Component name (only for kind=component)." },
-                children: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      kind: { type: "string", enum: ["container", "component"] },
-                      direction: { type: "string", enum: ["row", "column"] },
-                      name: { type: "string" },
-                      children: {
-                        type: "array",
-                        items: {
-                          type: "object",
-                          properties: {
-                            kind: { type: "string", enum: ["component"] },
-                            name: { type: "string" },
-                          },
-                          required: ["kind", "name"],
-                        },
-                      },
-                    },
-                    required: ["kind"],
-                  },
-                },
-              },
-              required: ["kind"],
-            },
-          },
-        },
-        required: ["kind", "direction", "children"],
-      },
+      layout: nodeSchema as never,
     },
     required: ["layout"],
   },
-} as const;
+};

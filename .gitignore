@@ -7,3 +7,7 @@ dist/
 .env.local
 *.log
 .DS_Store
+
+# Shoelace assets are vendored via `npm run shoelace:assets` (postinstall);
+# don't commit the 2050 SVG icons.
+public/shoelace/

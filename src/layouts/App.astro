@@ -1,6 +1,11 @@
 ---
 import "../styles/global.css";
 
+// Shoelace's dark-theme CSS is safe at SSR; the JS autoloader uses
+// MutationObserver and must load on the client only — registered via a
+// <script> tag below.
+import "@shoelace-style/shoelace/dist/themes/dark.css";
+
 interface Props {
   title: string;
   description?: string;
@@ -8,12 +13,12 @@ interface Props {
 
 const {
   title,
-  description = "Gen UI demo — two-stage Claude tool-use pipeline that composes UI from a small web-component library, without generating any code.",
+  description = "Gen UI demo — two-stage Claude tool-use pipeline that composes UI from a Shoelace web-component library, without generating any code.",
 } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" class="sl-theme-dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -25,5 +30,17 @@ const {
   </head>
   <body>
     <slot />
+    <script>
+      // Point Shoelace's default icon library at the copy of dist/assets we
+      // ship into /public/shoelace/. Must happen before the main bundle
+      // registers components.
+      import { setBasePath } from "@shoelace-style/shoelace/dist/utilities/base-path.js";
+      setBasePath("/shoelace/");
+
+      // All-in-one bundle: registers every sl-* tag up front. The
+      // autoloader's lazy per-component import breaks under Vite because
+      // its base-path resolution doesn't match Vite's served URLs.
+      import "@shoelace-style/shoelace/dist/shoelace.js";
+    </script>
   </body>
 </html>
