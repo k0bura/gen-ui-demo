@@ -1,7 +1,7 @@
 {
   "name": "gen-ui-demo",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Two-stage Claude tool-use pipeline that composes UI from a small web-component library, without generating any code.",
   "scripts": {

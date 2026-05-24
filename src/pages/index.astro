@@ -1,6 +1,9 @@
 ---
 import App from "../layouts/App.astro";
 import GenUI from "../components/GenUI.svelte";
+import pkg from "../../package.json";
+
+const version = pkg.version as string;
 ---
 
 <App title="Gen UI Demo">
@@ -9,6 +12,9 @@ import GenUI from "../components/GenUI.svelte";
       <a href="/" class="brand">
         <span class="brand-mark" aria-hidden="true"></span>
         <span class="brand-name">Gen UI Demo</span>
+        <span class="brand-version" aria-label={`Version ${version}`}>
+          v{version}
+        </span>
       </a>
       <nav class="app-nav" aria-label="External">
         <a
@@ -158,6 +164,27 @@ import GenUI from "../components/GenUI.svelte";
   .brand-name {
     font-size: 0.95rem;
     letter-spacing: -0.01em;
+  }
+
+  .brand-version {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--color-fg-muted);
+    background: var(--color-surface);
+    border: 1px solid var(--color-surface-2);
+    padding: 0.1rem 0.4rem;
+    border-radius: 999px;
+    letter-spacing: 0;
+    line-height: 1;
+    /* Pull up slightly so the pill sits aligned with the cap height,
+       not the baseline, of the brand name. */
+    transform: translateY(-1px);
+  }
+
+  .brand:hover .brand-version {
+    color: var(--color-fg);
+    border-color: var(--color-surface-hover);
   }
 
   .app-nav {
