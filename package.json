@@ -6,6 +6,7 @@
   "description": "Two-stage Claude tool-use pipeline that composes UI from a small web-component library, without generating any code.",
   "scripts": {
     "dev": "npm run shoelace:assets && astro dev",
+    "dev:functions": "npm run build && wrangler pages dev dist --port 8788 --compatibility-date=2026-05-22 --compatibility-flag=nodejs_compat",
     "build": "npm run shoelace:assets && astro build",
     "preview": "astro preview",
     "check": "astro check",
@@ -29,6 +30,7 @@
     "@cloudflare/workers-types": "^4.20260522.1",
     "@fontsource-variable/inter": "^5.2.5",
     "@fontsource-variable/jetbrains-mono": "^5.2.5",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "wrangler": "^4.94.0"
   }
 }

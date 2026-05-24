@@ -14,22 +14,14 @@
 
   let { node, components }: Props = $props();
 
-  const gapMap: Record<GapSize, string> = {
-    xs: "0.25rem",
-    sm: "0.5rem",
-    md: "1rem",
-    lg: "1.5rem",
-    xl: "2.5rem",
-  };
-
   const sideWidthMap = {
     narrow: "16rem",
     medium: "20rem",
     wide: "24rem",
   } as const;
 
-  function gap(size: GapSize | undefined): string {
-    return gapMap[size ?? "md"];
+  function gapAttr(size: GapSize | undefined): GapSize {
+    return size ?? "md";
   }
 
   function justifyValue(j: string | undefined): string {
@@ -48,20 +40,29 @@
   }
 </script>
 
+<!--
+  All layout classes are global (`gen-*`) and defined in src/styles/global.css.
+  Svelte scoped CSS hashes the universal selector inside `> * + *` rules,
+  which silently drops the spacing whenever a child element (like sl-divider
+  or anything rendered from another component) doesn't carry the scope hash.
+  Plain global CSS sidesteps the issue.
+-->
+
 {#if node.kind === "ref"}
   {@const cmp = findComponent(node.ref)}
   {#if cmp}
-    <div class="ref" style={node.span ? `grid-column: span ${node.span}` : ""}>
+    <div class="gen-ref" style={node.span ? `grid-column: span ${node.span}` : ""}>
       <ComponentRenderer instance={cmp} />
     </div>
   {:else}
-    <div class="missing">[missing component {node.ref}]</div>
+    <div class="gen-missing">[missing component {node.ref}]</div>
   {/if}
 
 {:else if node.kind === "grid"}
   <div
-    class="grid"
-    style={`grid-template-columns: repeat(${node.columns}, 1fr); gap: ${gap(node.gap)}`}
+    class="gen-grid"
+    data-gap={gapAttr(node.gap)}
+    style={`grid-template-columns: repeat(${node.columns}, 1fr)`}
   >
     {#each node.children as child, i (i)}
       <LayoutTree node={child} {components} />
@@ -70,8 +71,9 @@
 
 {:else if node.kind === "stack"}
   <div
-    class="stack"
-    style={`gap: ${gap(node.gap)}; align-items: ${node.align ?? "stretch"}`}
+    class="gen-stack"
+    data-gap={gapAttr(node.gap)}
+    style={`align-items: ${node.align ?? "stretch"}`}
   >
     {#each node.children as child, i (i)}
       <LayoutTree node={child} {components} />
@@ -80,8 +82,9 @@
 
 {:else if node.kind === "row"}
   <div
-    class="row"
-    style={`gap: ${gap(node.gap)}; flex-wrap: ${node.wrap === false ? "nowrap" : "wrap"}; align-items: ${node.align ?? "stretch"}; justify-content: ${justifyValue(node.justify)};`}
+    class="gen-row"
+    data-gap={gapAttr(node.gap)}
+    style={`flex-wrap: ${node.wrap === false ? "nowrap" : "wrap"}; align-items: ${node.align ?? "stretch"}; justify-content: ${justifyValue(node.justify)};`}
   >
     {#each node.children as child, i (i)}
       <LayoutTree node={child} {components} />
@@ -89,14 +92,14 @@
   </div>
 
 {:else if node.kind === "section"}
-  <section class="section">
+  <section class="gen-section">
     {#if node.heading || node.description}
-      <header class="section-head">
-        {#if node.heading}<h2 class="section-heading">{node.heading}</h2>{/if}
-        {#if node.description}<p class="section-desc">{node.description}</p>{/if}
+      <header class="gen-section-head">
+        {#if node.heading}<h2 class="gen-section-heading">{node.heading}</h2>{/if}
+        {#if node.description}<p class="gen-section-desc">{node.description}</p>{/if}
       </header>
     {/if}
-    <div class="section-body">
+    <div class="gen-section-body" data-gap="md">
       {#each node.children as child, i (i)}
         <LayoutTree node={child} {components} />
       {/each}
@@ -110,7 +113,7 @@
     {/each}
     {#each node.tabs as tab, i (i)}
       <sl-tab-panel name={`tab-${i}`}>
-        <div class="tab-body">
+        <div class="gen-tab-body" data-gap="md">
           {#each tab.children as child, j (j)}
             <LayoutTree node={child} {components} />
           {/each}
@@ -122,29 +125,29 @@
 {:else if node.kind === "sidebar"}
   {@const w = sideWidthMap[node.sideWidth ?? "medium"]}
   <div
-    class="sidebar"
+    class="gen-sidebar"
     style={node.side === "left"
       ? `grid-template-columns: ${w} 1fr`
       : `grid-template-columns: 1fr ${w}`}
   >
     {#if node.side === "left"}
-      <aside class="aside">
+      <aside class="gen-aside" data-gap="md">
         {#each node.aside as child, i (i)}
           <LayoutTree node={child} {components} />
         {/each}
       </aside>
-      <main class="main">
+      <main class="gen-main" data-gap="md">
         {#each node.main as child, i (i)}
           <LayoutTree node={child} {components} />
         {/each}
       </main>
     {:else}
-      <main class="main">
+      <main class="gen-main" data-gap="md">
         {#each node.main as child, i (i)}
           <LayoutTree node={child} {components} />
         {/each}
       </main>
-      <aside class="aside">
+      <aside class="gen-aside" data-gap="md">
         {#each node.aside as child, i (i)}
           <LayoutTree node={child} {components} />
         {/each}
@@ -155,45 +158,3 @@
 {:else if node.kind === "divider"}
   <sl-divider></sl-divider>
 {/if}
-
-<style>
-  .ref { min-width: 0; }
-  .grid { display: grid; width: 100%; }
-  .stack { display: flex; flex-direction: column; }
-  .row { display: flex; flex-direction: row; }
-  .section { width: 100%; }
-  .section-head { margin-bottom: var(--space-4); }
-  .section-heading {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0 0 var(--space-1);
-  }
-  .section-desc {
-    margin: 0;
-    color: var(--color-fg-muted);
-    font-size: 0.95em;
-  }
-  .section-body {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-  .tab-body {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-  .sidebar { display: grid; gap: var(--space-6); width: 100%; }
-  .aside,
-  .main {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    min-width: 0;
-  }
-  .missing {
-    color: var(--color-error);
-    font-family: var(--font-mono);
-    font-size: 0.85em;
-  }
-</style>

@@ -1,7 +1,7 @@
 import type {
-  PipelineEvent,
   ComponentInstance,
   LayoutNode,
+  PipelineEvent,
 } from "./types";
 import { MOCK_COMPONENTS, MOCK_LAYOUT } from "./mocks";
 
@@ -37,6 +37,10 @@ async function* runMockPipeline(
   yield { type: "stage2-result", layout: MOCK_LAYOUT };
 }
 
+// The server returns a single JSON response after both stages complete.
+// We yield stage events around the fetch so the UI gets a consistent
+// event stream, but they all fire in quick succession once the response
+// arrives - there's no progress mid-pipeline.
 async function* runRealPipeline(
   prompt: string,
 ): AsyncGenerator<PipelineEvent> {
@@ -48,7 +52,14 @@ async function* runRealPipeline(
       body: JSON.stringify({ prompt }),
     });
     if (!res.ok) {
-      yield { type: "error", message: `Server error: ${res.status}` };
+      let message = `Server error: ${res.status}`;
+      try {
+        const errBody = (await res.json()) as { error?: string };
+        if (errBody.error) message = errBody.error;
+      } catch {
+        // ignore, fall through with default
+      }
+      yield { type: "error", message };
       return;
     }
     const data = (await res.json()) as GenerateResponse;

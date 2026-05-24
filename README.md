@@ -52,20 +52,36 @@ Anthropic pipeline.
 ### Two ways to exercise the pipeline locally
 
 **Offline mocks** — flip `USE_MOCKS = true` in `src/demo/api-client.ts`. The
-demo will short-circuit `/api/generate` and return a canned response. Good
-for UI iteration without an API key.
+frontend will short-circuit `/api/generate` and return a canned response.
+Good for UI iteration without an API key.
 
 **Live API via wrangler** — to exercise the real two-stage pipeline locally:
 
 ```bash
+# One-time setup
 cp .dev.vars.example .dev.vars
-# edit .dev.vars and paste your ANTHROPIC_API_KEY
-npm run build
-npx wrangler pages dev dist --compatibility-date=2026-05-22
+# Paste your ANTHROPIC_API_KEY into .dev.vars
+
+# Build the site, then run wrangler against dist/ + functions/
+npm run dev:functions
+
+# Open http://localhost:8788 in the browser.
 ```
 
-`wrangler pages dev` serves both the built static site and the
-`functions/api/generate.ts` endpoint, picking up secrets from `.dev.vars`.
+`dev:functions` builds the static site and then runs `wrangler pages dev
+dist`, which serves the built frontend and the `functions/` directory
+together. Wrangler watches `functions/` for changes and reloads the
+Worker automatically.
+
+To iterate on frontend code with this setup, re-run `npm run build` in
+another terminal; wrangler picks up the new `dist/` automatically. If you
+need full frontend HMR and don't care about the live API, run `npm run
+dev` instead and use mock mode.
+
+**Why the split workflow?** Wrangler v4 deprecated its `--proxy` flag, so
+there's no clean way to give one dev server both HMR and live Functions.
+The Astro Cloudflare adapter would unify them, but it switches the project
+from static to SSR — out of scope for this demo.
 
 ### Production secrets
 
