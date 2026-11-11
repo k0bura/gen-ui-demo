@@ -1,53 +1,46 @@
 <script lang="ts">
-  import { runPipeline, USE_MOCKS } from "../demo/api-client";
-  import type { ComponentInstance, LayoutNode } from "../demo/types";
+  import { runPipeline, useMocks } from "../demo/api-client";
+  import { getTurnstileToken } from "../demo/turnstile-client";
+  import type { GenerateResponse, HistoryTurn } from "../demo/types";
   import LayoutTree from "./LayoutTree.svelte";
   import PromptForm from "./PromptForm.svelte";
 
-  type Stage = "idle" | "stage1" | "stage2" | "done" | "error";
+  type Stage = "idle" | "busy" | "done" | "error";
 
   let stage = $state<Stage>("idle");
-  let components = $state<ComponentInstance[]>([]);
-  let layout = $state<LayoutNode | null>(null);
+  let response = $state<GenerateResponse | null>(null);
   let errorMsg = $state<string | null>(null);
+  let lastPrompt = $state("");
+  let mocks = $state(false);
 
-  // Wall-clock based timer. `now` ticks every 250ms via the interval;
-  // `startedAt` is set when we transition into a busy stage. elapsed is
-  // derived from the two so the effect only manages interval lifecycle,
-  // never the reactive read path.
+  // The conversation, as the client remembers it: each earlier prompt and
+  // the short "what I showed" note the server returned for it. The server
+  // keeps nothing, so this is sent with every request.
+  let history = $state<HistoryTurn[]>([]);
+
+  $effect(() => {
+    mocks = useMocks();
+  });
+
+  // Wall-clock timer. `now` ticks while busy; elapsed is derived.
   let startedAt = $state<number | null>(null);
   let now = $state(Date.now());
 
-  const busy = $derived(stage === "stage1" || stage === "stage2");
+  const busy = $derived(stage === "busy");
+  const elapsedSeconds = $derived(startedAt ? Math.floor((now - startedAt) / 1000) : 0);
 
-  const elapsedSeconds = $derived(
-    startedAt ? Math.floor((now - startedAt) / 1000) : 0,
-  );
-
-  // Rotating status messages for Stage 1 (the long wait). One every ~6s,
-  // ordered roughly to track what Opus is doing under the hood. None
-  // promise progress they can't deliver - just convey "still working".
-  const stage1Messages = [
-    "Reading the design system manifest...",
-    "Picking the right Shoelace components for your prompt...",
-    "Drafting card headers and content...",
-    "Filling in attributes and slots...",
-    "Choosing icons and variants...",
-    "Reviewing the component set as a whole...",
-    "Almost there, finalizing the selection...",
+  // The server answers once, when every stage is done, so these are timed
+  // labels and not progress events. They follow the order the stages run in.
+  const messages = [
+    "Fetching live data...",
+    "Choosing components and filling them in...",
+    "Deciding the order, the groups and what each piece of text is...",
+    "Laying out the page from the row patterns...",
+    "Checking the layout against the spec and setting the type...",
+    "Still working. Long answers take a little longer...",
   ];
+  const currentMessage = $derived(messages[Math.min(Math.floor(elapsedSeconds / 7), messages.length - 1)]);
 
-  const messageIndex = $derived(
-    Math.min(Math.floor(elapsedSeconds / 6), stage1Messages.length - 1),
-  );
-
-  const currentMessage = $derived(
-    stage === "stage2"
-      ? "Arranging components into a layout..."
-      : stage1Messages[messageIndex],
-  );
-
-  // Interval lifecycle only - no reactive writes here besides `now`.
   $effect(() => {
     if (!busy) return;
     startedAt = Date.now();
@@ -67,19 +60,20 @@
     return m > 0 ? `${m}:${r.toString().padStart(2, "0")}` : `${r}s`;
   }
 
-  async function submit(prompt: string) {
-    stage = "stage1";
-    components = [];
-    layout = null;
-    errorMsg = null;
+  // Where Cloudflare Turnstile mounts. It stays empty unless a visitor
+  // needs an interactive challenge.
+  let turnstileEl: HTMLDivElement | null = $state(null);
 
-    for await (const evt of runPipeline(prompt)) {
-      if (evt.type === "stage1-result") {
-        components = evt.components;
-      } else if (evt.type === "stage2-start") {
-        stage = "stage2";
-      } else if (evt.type === "stage2-result") {
-        layout = evt.layout;
+  async function submit(prompt: string) {
+    stage = "busy";
+    errorMsg = null;
+    lastPrompt = prompt;
+    const sent = $state.snapshot(history) as HistoryTurn[];
+
+    for await (const evt of runPipeline(prompt, sent, () => getTurnstileToken(turnstileEl))) {
+      if (evt.type === "result") {
+        response = evt.response;
+        history = [...history, { prompt, summary: evt.response.summary }].slice(-6);
         stage = "done";
       } else if (evt.type === "error") {
         stage = "error";
@@ -90,20 +84,33 @@
 
   function reset() {
     stage = "idle";
-    components = [];
-    layout = null;
+    response = null;
     errorMsg = null;
+    history = [];
+    lastPrompt = "";
   }
+
+  const stageNames: Record<string, string> = {
+    data: "data tool",
+    components: "components",
+    structure: "structure",
+    layout: "layout",
+    repair: "code pass",
+    "follow-ups": "follow-ups",
+  };
 </script>
 
-{#if USE_MOCKS}
+{#if mocks}
   <sl-alert variant="primary" open class="banner">
     <sl-icon slot="icon" name="info-circle"></sl-icon>
-    <strong>Mock mode.</strong> Every prompt returns the same demo response. Live Anthropic backend lands in a follow-up commit.
+    <strong>Mock mode.</strong> Every prompt returns the same canned answer, written with
+    mistakes on purpose and then run through the real code passes. Remove
+    <code>?mock</code> from the URL for the live pipeline.
   </sl-alert>
 {/if}
 
 <PromptForm onsubmit={submit} disabled={busy} />
+<div class="turnstile-slot" bind:this={turnstileEl}></div>
 
 {#if busy}
   <div class="thinking" role="status" aria-live="polite">
@@ -115,21 +122,16 @@
         {/key}
         <div class="thinking-meta">
           <span class="elapsed">{formatElapsed(elapsedSeconds)} elapsed</span>
-          {#if stage === "stage2" && components.length}
+          {#if history.length}
             <span class="dot">·</span>
-            <span>{components.length} components ready</span>
+            <span>follow-up {history.length + 1} in this conversation</span>
           {/if}
         </div>
       </div>
     </div>
-    {#if stage === "stage2" && components.length}
-      <p class="thinking-selected">
-        Picked: <code>{components.map((c) => c.tagName).join(", ")}</code>
-      </p>
-    {/if}
     <div class="thinking-hint">
-      Stage 1 (component selection) typically takes 30 - 120 seconds.
-      Stage 2 (layout) is fast.
+      One prompt is four to seven model calls plus the data fetches, run one
+      after another. Expect 30 to 120 seconds.
     </div>
   </div>
 {:else if stage === "error"}
@@ -137,20 +139,43 @@
     <sl-icon slot="icon" name="exclamation-octagon"></sl-icon>
     <strong>Something went wrong.</strong> {errorMsg}
     <sl-button slot="action" variant="default" size="small" onclick={reset}>
-      Try again
+      Start over
     </sl-button>
   </sl-alert>
-{:else if stage === "done" && layout}
+{:else if stage === "done" && response}
   <section class="result" aria-label="Generated UI">
-    <LayoutTree node={layout} {components} />
+    <p class="result-prompt"><span>You asked</span> {lastPrompt}</p>
+    <LayoutTree node={response.layout} components={response.components} />
   </section>
 
+  {#if response.followUps.length}
+    <div class="followups">
+      <span class="followups-label">Ask next</span>
+      {#each response.followUps as f (f)}
+        <button type="button" class="followup" onclick={() => submit(f)}>{f}</button>
+      {/each}
+    </div>
+  {/if}
+
   <details class="json-viewer">
-    <summary>Show the pipeline JSON</summary>
-    <h3>Stage 1 — selected components</h3>
-    <pre>{JSON.stringify(components, null, 2)}</pre>
-    <h3>Stage 2 — layout</h3>
-    <pre>{JSON.stringify(layout, null, 2)}</pre>
+    <summary>Show what the pipeline did</summary>
+    <h3>Trace</h3>
+    <ol class="trace">
+      {#each response.trace as t, i (i)}
+        <li class:failed={!t.ok}>
+          <span class="trace-stage">{stageNames[t.stage] ?? t.stage}</span>
+          <span class="trace-label">{t.label}</span>
+          {#if t.ms !== undefined}<span class="trace-ms">{t.ms} ms</span>{/if}
+          {#if t.note}<span class="trace-note">{t.note}</span>{/if}
+        </li>
+      {/each}
+    </ol>
+    <h3>Components</h3>
+    <pre>{JSON.stringify(response.components, null, 2)}</pre>
+    <h3>Layout</h3>
+    <pre>{JSON.stringify(response.layout, null, 2)}</pre>
+    <h3>Conversation memory sent with the next prompt</h3>
+    <pre>{JSON.stringify(history, null, 2)}</pre>
   </details>
 
   <div class="reset-row">
@@ -241,6 +266,78 @@
   .result {
     margin-top: var(--space-8);
   }
+  .result-prompt {
+    margin: 0 0 var(--space-6);
+    color: var(--color-fg-muted);
+    font-size: 0.875rem;
+  }
+  .result-prompt span {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-right: var(--space-2);
+    color: var(--color-fg-dim);
+  }
+  .followups {
+    margin-top: var(--space-8);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .followups-label {
+    color: var(--color-fg-muted);
+    font-size: 0.875rem;
+    margin-right: var(--space-2);
+  }
+  .followup {
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid var(--color-surface-2);
+    border-radius: 999px;
+    background: var(--color-accent-soft);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    cursor: pointer;
+  }
+  .followup:hover {
+    border-color: var(--color-accent);
+  }
+  .trace {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    line-height: 1.6;
+  }
+  .trace li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: var(--space-1) 0;
+    border-bottom: 1px solid var(--color-surface-2);
+  }
+  .trace-stage {
+    color: var(--color-accent);
+    min-width: 6.5rem;
+  }
+  .trace-label {
+    color: var(--color-fg);
+    overflow-wrap: anywhere;
+  }
+  .trace-ms {
+    color: var(--color-fg-dim);
+  }
+  .trace-note {
+    color: var(--color-fg-muted);
+    flex-basis: 100%;
+    padding-left: 7rem;
+  }
+  .trace li.failed .trace-stage {
+    color: var(--color-warning);
+  }
   .json-viewer {
     margin-top: var(--space-12);
     border-top: 1px solid var(--color-surface-2);
@@ -273,5 +370,8 @@
   }
   .reset-row {
     margin-top: var(--space-6);
+  }
+  .turnstile-slot:not(:empty) {
+    margin-top: 0.75rem;
   }
 </style>

@@ -41,10 +41,11 @@ const version = pkg.version as string;
     <section class="hero">
       <h1 class="hero-title">Generative UI without generating code</h1>
       <p class="hero-lede">
-        Two Claude tool-use calls in series. The first selects components
-        from a small web-component library and fills them with content;
-        the second arranges them into a layout. A renderer materializes
-        the result deterministically. The model never writes code.
+        Ask a question. A chain of Claude tool-use calls fetches live data,
+        picks components from a web-component library, and arranges them
+        into a page. The layout rules live in one spec file that both the
+        prompts and the code read: the prompt asks for the pattern, and the
+        code guarantees it. The model never writes code, CSS or sizes.
       </p>
     </section>
 
@@ -58,40 +59,65 @@ const version = pkg.version as string;
         <li>
           <span class="explainer-step">1</span>
           <div>
-            <h3>Component selection</h3>
+            <h3>Data, then components</h3>
             <p>
-              The first model call receives a tool schema describing the
-              available components and their props. It returns structured
-              <code>tool_use</code> blocks that name components and fill
-              them with content. No JSX, no HTML — typed JSON.
+              The first model works in a loop. It calls data tools (weather, exchange rates, Wikipedia) and the server returns small, labelled, pre-rounded results. Then it calls one tool per component. Those calls are never executed: the call is the output. A failed data call comes back as data, with an instruction not to fill the gap from memory.
             </p>
           </div>
         </li>
         <li>
           <span class="explainer-step">2</span>
           <div>
-            <h3>Layout composition</h3>
+            <h3>Structure and roles</h3>
             <p>
-              A second model call receives the chosen components and a
-              layout-tool schema. It returns a nested layout object that
-              groups components into rows, columns, and stacks. Constrained
-              to a small grammar; no free-form layout code.
+              A second model reads the components and decides order, grouping, and what each piece of text is: a card title, a headline figure, body text. It never picks a size. If its answer is missing, malformed, or changes a figure, the first stage's output stands.
             </p>
           </div>
         </li>
         <li>
           <span class="explainer-step">3</span>
           <div>
+            <h3>Layout from a closed set</h3>
+            <p>
+              A third, cheaper model sees one summary line per component, not the markup, and arranges them using six row patterns from the layout spec. The patterns, min-widths and grouping rules in its prompt are generated from the same spec file the code enforces.
+            </p>
+          </div>
+        </li>
+        <li>
+          <span class="explainer-step">4</span>
+          <div>
+            <h3>Code passes</h3>
+            <p>
+              Between and after the model calls, plain code cleans the markup, repairs the layout so it obeys the spec whatever the model returned, and sets type sizes from each role and the width of its slot. These passes are unit tested and run in mock mode too.
+            </p>
+          </div>
+        </li>
+        <li>
+          <span class="explainer-step">5</span>
+          <div>
             <h3>Deterministic render</h3>
             <p>
-              The application code walks the layout tree, instantiates each
-              web component, and renders. Standards-based custom elements
-              mean the same components work in Vue, Angular, AEM, or
-              vanilla HTML.
+              The app walks the layout tree and instantiates each web component. Standards-based custom elements, so the same components would work in Vue, Angular or plain HTML.
+            </p>
+          </div>
+        </li>
+        <li>
+          <span class="explainer-step">6</span>
+          <div>
+            <h3>Follow-ups and memory</h3>
+            <p>
+              A last small call suggests three next prompts. The server is stateless: the browser sends back each earlier prompt with a short note of what was shown, and every turn fetches fresh data.
             </p>
           </div>
         </li>
       </ol>
+      <p class="explainer-note">
+        Layout grid, spacing and type scale follow IBM Carbon (2x Grid at the
+        <code>lg</code> breakpoint, productive type tokens), whose Figma kit is
+        free on Figma Community. The components are Shoelace. Open
+        <a href="?mock">mock mode</a> to see the code passes work without an
+        API key: the canned answer is written with mistakes on purpose.
+      </p>
     </section>
   </main>
 
@@ -110,11 +136,6 @@ const version = pkg.version as string;
       </span>
     </div>
   </footer>
-
-  <!--
-    Shoelace components register themselves via the autoloader imported in
-    src/layouts/App.astro; no per-tag imports needed.
-  -->
 
 </App>
 
@@ -297,6 +318,13 @@ const version = pkg.version as string;
     color: var(--color-fg-muted);
     font-size: 0.9rem;
     margin: 0;
+  }
+
+  .explainer-note {
+    margin: var(--space-6) 0 0;
+    color: var(--color-fg-muted);
+    font-size: 0.875rem;
+    max-width: 48rem;
   }
 
   /* Footer */

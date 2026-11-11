@@ -11,6 +11,7 @@ export interface PropertySchema {
   properties?: Record<string, PropertySchema>;
   additionalProperties?: boolean;
   items?: PropertySchema;
+  required?: string[];
   default?: unknown;
 }
 
@@ -54,14 +55,41 @@ export interface ComponentInstance {
   attributes: Record<string, string | number | boolean>;
   content?: string;
   slots?: Record<string, string>;
+  /** Set by the structure stage: components that belong together. */
+  group?: string;
+  /** Payload for the two hand-written tools (render-chart, render-table). */
+  data?: ChartData | TableData;
 }
 
+export interface ChartData {
+  kind: "chart";
+  chartType: "line" | "bar" | "pie" | "doughnut";
+  title?: string;
+  unit?: string;
+  labels: string[];
+  datasets: Array<{ label: string; data: number[] }>;
+}
+
+export interface TableData {
+  kind: "table";
+  title?: string;
+  caption?: string;
+  columns: string[];
+  rows: Array<Array<string | number>>;
+}
+
+// The two hand-written component tools. Everything else comes from the
+// design system manifest.
+export const CHART_TAG = "render-chart";
+export const TABLE_TAG = "render-table";
+
 // ---------------------------------------------------------------------------
-// Stage 2 output — the layout tree.
+// Layout output — the layout tree.
 // ---------------------------------------------------------------------------
 
 export type LayoutNode =
   | LayoutRef
+  | LayoutPattern
   | LayoutGrid
   | LayoutStack
   | LayoutRow
@@ -76,6 +104,17 @@ export interface LayoutRef {
   span?: number;
 }
 
+// A row pattern from the layout spec. The closed set of ids lives in
+// layout-spec.ts; the model can only pick from it. Children fill the
+// pattern's tracks left to right and wrap into further rows.
+export interface LayoutPattern {
+  kind: "pattern";
+  pattern: string;
+  children: LayoutNode[];
+}
+
+// grid / row / sidebar are legacy free-form nodes. The model is no longer
+// offered them and layout repair rewrites any it meets into patterns.
 export interface LayoutGrid {
   kind: "grid";
   columns: number;
@@ -129,11 +168,32 @@ export type GapSize = "xs" | "sm" | "md" | "lg" | "xl";
 // Pipeline events
 // ---------------------------------------------------------------------------
 
+export interface TraceEntry {
+  stage: "data" | "components" | "structure" | "layout" | "repair" | "follow-ups";
+  label: string;
+  ok: boolean;
+  ms?: number;
+  note?: string;
+}
+
+/** One earlier turn, as the client remembers it. The server is stateless. */
+export interface HistoryTurn {
+  prompt: string;
+  summary: string;
+}
+
+export interface GenerateResponse {
+  components: ComponentInstance[];
+  layout: LayoutNode;
+  followUps: string[];
+  /** Short "what I showed" note the client sends back on the next turn. */
+  summary: string;
+  trace: TraceEntry[];
+}
+
 export type PipelineEvent =
-  | { type: "stage1-start" }
-  | { type: "stage1-result"; components: ComponentInstance[] }
-  | { type: "stage2-start" }
-  | { type: "stage2-result"; layout: LayoutNode }
+  | { type: "start" }
+  | { type: "result"; response: GenerateResponse }
   | { type: "error"; message: string };
 
 // ---------------------------------------------------------------------------

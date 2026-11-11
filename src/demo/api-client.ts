@@ -1,55 +1,43 @@
-import type {
-  ComponentInstance,
-  LayoutNode,
-  PipelineEvent,
-} from "./types";
-import { MOCK_COMPONENTS, MOCK_LAYOUT } from "./mocks";
-
-interface GenerateResponse {
-  components: ComponentInstance[];
-  layout: LayoutNode;
-}
+import { mockResponse } from "./mocks";
+import type { GenerateResponse, HistoryTurn, PipelineEvent } from "./types";
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-// Flip to `true` for offline development without an Anthropic key. Production
-// + CF Pages deploys hit /api/generate (the real two-stage pipeline).
-export const USE_MOCKS = false;
+// Mock mode needs no API key: every prompt returns the same canned answer,
+// run through the real code passes. Turn it on with `?mock` in the URL, or
+// by flipping the constant for a whole dev session.
+const FORCE_MOCKS = false;
 
+export function useMocks(): boolean {
+  if (FORCE_MOCKS) return true;
+  return typeof location !== "undefined" && new URLSearchParams(location.search).has("mock");
+}
+
+/**
+ * Runs one prompt. `history` is the earlier turns of this conversation as
+ * the client remembers them: the server keeps no state.
+ */
 export async function* runPipeline(
   prompt: string,
+  history: HistoryTurn[] = [],
+  getToken: () => Promise<string | null> = async () => null,
 ): AsyncGenerator<PipelineEvent> {
-  if (USE_MOCKS) {
-    yield* runMockPipeline(prompt);
+  yield { type: "start" };
+
+  if (useMocks()) {
+    await sleep(600);
+    yield { type: "result", response: mockResponse() };
     return;
   }
-  yield* runRealPipeline(prompt);
-}
 
-async function* runMockPipeline(
-  _prompt: string,
-): AsyncGenerator<PipelineEvent> {
-  yield { type: "stage1-start" };
-  await sleep(900);
-  yield { type: "stage1-result", components: MOCK_COMPONENTS };
-  yield { type: "stage2-start" };
-  await sleep(700);
-  yield { type: "stage2-result", layout: MOCK_LAYOUT };
-}
-
-// The server returns a single JSON response after both stages complete.
-// We yield stage events around the fetch so the UI gets a consistent
-// event stream, but they all fire in quick succession once the response
-// arrives - there's no progress mid-pipeline.
-async function* runRealPipeline(
-  prompt: string,
-): AsyncGenerator<PipelineEvent> {
-  yield { type: "stage1-start" };
   try {
+    // A Turnstile token is single-use, so each request gets its own. Null
+    // means no site key is configured (local development).
+    const turnstileToken = await getToken();
     const res = await fetch("/api/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify({ prompt, history, ...(turnstileToken ? { turnstileToken } : {}) }),
     });
     if (!res.ok) {
       let message = `Server error: ${res.status}`;
@@ -57,19 +45,13 @@ async function* runRealPipeline(
         const errBody = (await res.json()) as { error?: string };
         if (errBody.error) message = errBody.error;
       } catch {
-        // ignore, fall through with default
+        // Not JSON. Keep the status message.
       }
       yield { type: "error", message };
       return;
     }
-    const data = (await res.json()) as GenerateResponse;
-    yield { type: "stage1-result", components: data.components };
-    yield { type: "stage2-start" };
-    yield { type: "stage2-result", layout: data.layout };
+    yield { type: "result", response: (await res.json()) as GenerateResponse };
   } catch (e) {
-    yield {
-      type: "error",
-      message: e instanceof Error ? e.message : String(e),
-    };
+    yield { type: "error", message: e instanceof Error ? e.message : String(e) };
   }
 }

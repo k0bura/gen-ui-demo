@@ -6,8 +6,7 @@
 //
 // Adding a new component to Shoelace, or rev'ing one with a new prop, means
 // the LLM's tool surface updates automatically next build. No hand-curated
-// tool list to maintain. This is the same pattern that powers the AXS MCP
-// server.
+// tool list to maintain.
 
 import manifestJson from "@shoelace-style/shoelace/dist/custom-elements.json";
 import type {
@@ -127,6 +126,7 @@ interface ManifestDeclaration {
   description?: string;
   summary?: string;
   status?: string;
+  customElement?: boolean;
   attributes?: ManifestAttribute[];
   slots?: ManifestSlot[];
 }
@@ -144,10 +144,14 @@ const manifest = manifestJson as unknown as Manifest;
 
 export const componentSpecs: ComponentSpec[] = [];
 
+/** Every tag the library defines, exposed as a tool or not (sl-icon, ...). */
+export const allLibraryTags = new Set<string>();
+
 for (const mod of manifest.modules) {
   for (const decl of mod.declarations ?? []) {
     const tag = decl.tagName;
     if (!tag || !decl.customElement) continue;
+    allLibraryTags.add(tag);
     if (!shouldExpose(tag, decl.status)) continue;
 
     const attributes: Record<string, PropertySchema> = {};

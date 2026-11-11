@@ -58,6 +58,17 @@
     <div class="gen-missing">[missing component {node.ref}]</div>
   {/if}
 
+{:else if node.kind === "pattern"}
+  <!-- One of the layout spec's row patterns. The track sizes come from the
+       stylesheet generated from the spec (see layout-spec.ts specToCss). -->
+  <div class="gen-pattern" data-pattern={node.pattern}>
+    {#each node.children as child, i (i)}
+      <div class="gen-cell">
+        <LayoutTree node={child} {components} />
+      </div>
+    {/each}
+  </div>
+
 {:else if node.kind === "grid"}
   <div
     class="gen-grid"

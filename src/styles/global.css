@@ -291,11 +291,82 @@ sl-card code, sl-alert code, sl-details code {
 /* only way to make adjacent-sibling spacing match every kind of child.   */
 /* ---------------------------------------------------------------------- */
 
-[data-gap="xs"] { --gap: 0.5rem; }
-[data-gap="sm"] { --gap: 0.75rem; }
-[data-gap="md"] { --gap: 1.5rem; }
-[data-gap="lg"] { --gap: 2rem; }
-[data-gap="xl"] { --gap: 3rem; }
+/* Gap sizes, the row patterns' track sizes and the type styles are not
+   written here. They are generated from src/demo/layout-spec.ts and
+   injected by the App layout, so the stylesheet cannot drift from the spec
+   the prompts and the repair pass use. */
+
+.gen-pattern {
+  display: grid;
+  width: 100%;
+  align-items: stretch;
+}
+.gen-cell {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.gen-cell > .gen-ref,
+.gen-cell > .gen-stack {
+  flex: 1;
+}
+.gen-cell sl-card,
+.gen-cell sl-card::part(base) {
+  height: 100%;
+}
+
+/* Below Carbon's md breakpoint every row is a single column. */
+@media (max-width: 671px) {
+  .gen-pattern {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+/* Between md and lg, four across becomes two across. */
+@media (min-width: 672px) and (max-width: 1055px) {
+  .gen-pattern[data-pattern="4-up"],
+  .gen-pattern[data-pattern="3-up"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Role elements are spans as often as paragraphs. Make them stack. */
+[data-role] {
+  display: block;
+  margin: 0;
+}
+[data-role="eyebrow"] { margin-bottom: var(--space-1); }
+[data-role="stat-label"] { margin-top: var(--space-1); color: var(--color-fg-muted); }
+[data-role="caption"] { margin-top: var(--space-2); }
+li[data-role] { display: list-item; }
+sl-card p[data-role="body"] + p[data-role="body"],
+sl-alert p[data-role="body"] + p[data-role="body"],
+sl-details p[data-role="body"] + p[data-role="body"] {
+  margin-top: var(--space-3);
+}
+
+.gen-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  line-height: 20px;
+}
+.gen-table th,
+.gen-table td {
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  border-bottom: 1px solid var(--color-surface-2);
+  white-space: nowrap;
+}
+.gen-table th {
+  font-weight: 600;
+  color: var(--color-fg-muted);
+}
+.gen-table tbody tr:last-child td { border-bottom: 0; }
+.gen-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.gen-figure { width: 100%; }
 
 .gen-stack,
 .gen-section-body,
