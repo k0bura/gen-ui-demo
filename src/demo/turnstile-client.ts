@@ -30,8 +30,20 @@ declare global {
   }
 }
 
-/** The public site key, set at build time. Empty means Turnstile is off. */
-export const TURNSTILE_SITE_KEY: string = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
+let siteKeyLoading: Promise<string> | null = null;
+
+/**
+ * The public site key, read once from /api/config. Empty means Turnstile is
+ * off: no key is configured, or there is no function to ask (plain
+ * `astro dev`). The server still enforces its own check either way.
+ */
+function siteKey(): Promise<string> {
+  siteKeyLoading ??= fetch("/api/config")
+    .then((res) => (res.ok ? (res.json() as Promise<{ turnstileSiteKey?: string }>) : {}))
+    .then((cfg: { turnstileSiteKey?: string }) => cfg.turnstileSiteKey ?? "")
+    .catch(() => "");
+  return siteKeyLoading;
+}
 
 let scriptLoading: Promise<void> | null = null;
 let widgetId: string | null = null;
@@ -63,7 +75,8 @@ function settle(fn: (p: NonNullable<typeof pending>) => void) {
  * (local development). Rejects when verification cannot be completed.
  */
 export async function getTurnstileToken(container: HTMLElement | null): Promise<string | null> {
-  if (!TURNSTILE_SITE_KEY) return null;
+  const sitekey = await siteKey();
+  if (!sitekey) return null;
   if (!container) throw new Error("Verification widget is not ready.");
 
   await loadScript();
@@ -84,7 +97,7 @@ export async function getTurnstileToken(container: HTMLElement | null): Promise<
 
     if (widgetId === null) {
       widgetId = api.render(container, {
-        sitekey: TURNSTILE_SITE_KEY,
+        sitekey,
         execution: "execute",
         appearance: "interaction-only",
         theme: "dark",

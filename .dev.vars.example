@@ -13,9 +13,8 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 # Cloudflare Turnstile. Leave both unset for local development: the function
 # only skips the check on localhost, and answers 503 anywhere else without a
-# secret. In the Pages project set TURNSTILE_SECRET_KEY as a secret and
-# PUBLIC_TURNSTILE_SITE_KEY as a build-time variable (it is public and is
-# compiled into the page).
+# secret. In production the site key (public) lives in wrangler.toml [vars]
+# as TURNSTILE_SITE_KEY, and TURNSTILE_SECRET_KEY is a Pages secret.
 # To exercise the flow locally, use Cloudflare's always-pass test keys:
+# TURNSTILE_SITE_KEY=1x00000000000000000000AA
 # TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
-# and build with PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA

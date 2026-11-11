@@ -145,12 +145,15 @@ call.
 
 1. In the Cloudflare dashboard: **Turnstile → Add widget**, with the
    demo's hostname. Managed mode is fine.
-2. In the Pages project, **Settings → Environment variables → Production**:
-   - `TURNSTILE_SECRET_KEY`: the widget's secret key (encrypted).
-   - `PUBLIC_TURNSTILE_SITE_KEY`: the widget's site key. It is public and
-     is compiled into the page at build time, so it must be set before the
-     build runs.
-3. Redeploy.
+2. Put the widget's **site key** in `wrangler.toml` under `[vars]` as
+   `TURNSTILE_SITE_KEY`. It is public, and the page reads it at runtime
+   from `/api/config`. (This project's variables are managed by
+   `wrangler.toml`, so plain variables cannot be added in the dashboard.)
+3. Add the widget's **secret key** as a secret named
+   `TURNSTILE_SECRET_KEY`: in the Pages project under **Settings →
+   Variables and Secrets → Add → Secret**, or with
+   `npx wrangler pages secret put TURNSTILE_SECRET_KEY`.
+4. Deploy.
 
 The check fails closed. With no secret, only requests to `localhost` get
 through; any deployed host answers 503 rather than run an open endpoint.
